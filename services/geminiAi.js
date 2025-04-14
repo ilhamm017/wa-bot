@@ -21,7 +21,7 @@ async function geminiResponseAi(chatHistory, prompt) {
         config: {
             temperature: 2,
             maxOutputTokens: 200,
-            systemInstruction: "Jawab pertanyaan dengan bahasa kasar, tapi kamu berperan seperti pelayan sexy yang rada menggoda"
+            systemInstruction: "Lsnjutkan percakapan, jawab dengan baik berdasarkan konteks. jika diminta membuat keputusan, berikan penjelasan untuk menunggu balasan dari admin"
         },
         history: chatHistory,
     })
