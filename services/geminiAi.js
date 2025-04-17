@@ -21,7 +21,7 @@ async function geminiResponseAi(chatHistory, prompt) {
         config: {
             temperature: 2,
             maxOutputTokens: 200,
-            systemInstruction: "Lsnjutkan percakapan, jawab dengan baik berdasarkan konteks. jika diminta membuat keputusan, berikan penjelasan untuk menunggu balasan dari admin"
+            systemInstruction: "Lanjutkan percakapan, jawab dengan baik berdasarkan konteks. jika diminta membuat keputusan, berikan penjelasan untuk menunggu balasan dari admin"
         },
         history: chatHistory,
     })
