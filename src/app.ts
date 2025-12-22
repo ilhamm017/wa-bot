@@ -1,7 +1,8 @@
-require('dotenv').config()
-const {Client, LocalAuth, MessageAck} = require('whatsapp-web.js')
-const qrcode = require('qrcode-terminal')
-const {getGeminiResponse, geminiResponseAi} = require('./services/geminiAi')
+import 'dotenv/config'
+import { Client, LocalAuth, Message, Chat, MessageAck, MessageTypes } from 'whatsapp-web.js'
+import qrcode from 'qrcode-terminal'
+import { geminiResponseAi } from './services/geminiAi'
+import { Content, Part } from '@google/genai'
 
 const client = new Client({
     puppeteer: {
@@ -13,7 +14,7 @@ const client = new Client({
 
 client.initialize()
 
-client.on('qr', async (qr) => {
+client.on('qr', (qr: string) => {
     qrcode.generate(qr, {
         small: true
     })
@@ -23,42 +24,51 @@ client.on('authenticated', () => {
     console.log('Authenticated!')
 })
 
-client.on('auth_failure', () => {
-    console.log('Authentication failed!')
+client.on('auth_failure', (msg: string) => {
+    console.log('Authentication failed!', msg)
 })
 
 client.on('ready', () => {
     console.log('Client is ready!')
 })
 
+interface QueueItem {
+    messageId: string;
+    timestamp: number;
+    message: string;
+    replied: boolean;
+}
+
 /**
  * Map untuk menyimpan antrian pesan yang diterima.
  */
-let messageQueue = new Map()
+let messageQueue = new Map<string, QueueItem[]>()
 
-client.on('message_create', async (message) => {
+client.on('message_create', async (message: Message) => {
     try {
-        if (message.fromMe){
+        if (message.fromMe) {
             // Cek jika ini pesan balasan (quote) dari pesan sebelumnya
-            if (message.hasQuotedMsg){
+            if (message.hasQuotedMsg) {
                 const quoteMessage = await message.getQuotedMessage()
                 const senderId = quoteMessage.from
                 const quotedId = quoteMessage.id._serialized
                 if (messageQueue.has(senderId)) {
                     const messageList = messageQueue.get(senderId)
-                    const filtered = messageList.filter(m => m.messageId !== quotedId)
-                    // Update map dengan menghapus pesan yang sudah di-quote
-                    if (filtered.length > 0) {
-                        messageQueue.set(senderId, filtered)
-                    } else {
-                        messageQueue.delete(senderId)
+                    if (messageList) {
+                        const filtered = messageList.filter(m => m.messageId !== quotedId)
+                        // Update map dengan menghapus pesan yang sudah di-quote
+                        if (filtered.length > 0) {
+                            messageQueue.set(senderId, filtered)
+                        } else {
+                            messageQueue.delete(senderId)
+                        }
+                        console.log(`Manual reply pesan ${quotedId}`)
                     }
-                    console.log(`Manual reply pesan ${quotedId}`)
                 }
             }
             return
         }
-        
+
         const chatId = message.from
         const messageId = message.id._serialized
         const timestamp = Date.now()
@@ -68,23 +78,23 @@ client.on('message_create', async (message) => {
 
         if (!chatData.isGroup) {
             switch (messagetype) {
-                case 'chat':
+                case MessageTypes.TEXT:
                     console.log('chat message received')
-                    const newQueue = {
+                    const newQueue: QueueItem = {
                         messageId,
                         timestamp,
                         message: message.body,
                         replied: false
                     }
-    
+
                     if (!messageQueue.has(chatId)) {
                         messageQueue.set(chatId, [newQueue])
                         console.log(`new messageQueue from: ${chatId}`)
                     } else {
-                        messageQueue.get(chatId).push(newQueue)
+                        messageQueue.get(chatId)?.push(newQueue)
                         console.log(`add to messageQueue: ${messageId}`)
                     }
-    
+
                     // set timer pengecekan 
                     setTimeout(async () => {
                         console.log(`time up, ai will response`)
@@ -98,12 +108,15 @@ client.on('message_create', async (message) => {
                                 limit: 20
                             })
                             console.log(`rebuld chat history`)
-                            const chatHistory = historyData.map(msg => ({
-                                role: msg.fromMe? 'model' : 'user',
+
+                            // Transform to Gemini Content format
+                            const chatHistory: Content[] = historyData.map(msg => ({
+                                role: msg.fromMe ? 'model' : 'user',
                                 parts: [{
                                     text: msg.body
-                                }]
+                                }] as Part[]
                             }))
+
                             // Tambahkan logika untuk memastikan "user" selalu berada di atas
                             if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
                                 chatHistory.unshift({
@@ -118,121 +131,125 @@ client.on('message_create', async (message) => {
                             const response = await geminiResponseAi(chatHistory, message.body)
                             message.reply(response)
                             console.log(`reply AI`)
-    
+
                             // Tandai replied dan hapus dari map
-                            const updateList = messageList.filter(m => m.messageId !== messageId)
-                            if (updateList.length > 0) {
-                                messageQueue.set(chatId, updateList)
-                            } else {
-                                messageQueue.delete(chatId)
+                            // Re-fetch to make sure we have latest state
+                            const currentList = messageQueue.get(chatId)
+                            if (currentList) {
+                                const updateList = currentList.filter(m => m.messageId !== messageId)
+                                if (updateList.length > 0) {
+                                    messageQueue.set(chatId, updateList)
+                                } else {
+                                    messageQueue.delete(chatId)
+                                }
                             }
                         }
                     }, 6000)
-    
+
                     break
-                case 'audio':
+                case MessageTypes.AUDIO:
                     console.log('Audio message received')
                     break
-                case 'voice':
+                case MessageTypes.VOICE:
                     console.log('Voice message received')
                     break
-                case 'image':
+                case MessageTypes.IMAGE:
                     console.log('Image message received')
                     break
-                case 'video':
+                case MessageTypes.VIDEO:
                     console.log('Video message received')
                     break
-                case 'document':
+                case MessageTypes.DOCUMENT:
                     console.log('Document message received')
                     break
-                case 'sticker':
+                case MessageTypes.STICKER:
                     console.log('Sticker message received')
                     break
-                case 'location':
+                case MessageTypes.LOCATION:
                     console.log('Location message received')
                     break
-                case 'vcard':
+                case MessageTypes.CONTACT_CARD:
                     console.log('Contact card message received')
                     break
-                case 'multi_vcard':
+                case MessageTypes.CONTACT_CARD_MULTI:
                     console.log('Contact card multi message received')
                     break
-                case 'order':
+                case MessageTypes.ORDER:
                     console.log('Order message received')
                     break
-                case 'revoke':
+                case MessageTypes.REVOKED:
                     console.log('Revoke message received')
                     break
-                case 'product':
+                case MessageTypes.PRODUCT:
                     console.log('Product message received')
                     break
-                case 'unknown':
+                case MessageTypes.UNKNOWN:
                     console.log('Unknown message received')
                     break
-                case 'group_invite':
+                case MessageTypes.GROUP_INVITE:
                     console.log('Group invite message received')
                     break
-                case 'list':
+                case MessageTypes.LIST:
                     console.log('List message received')
                     break
-                case 'list_response':
+                case MessageTypes.LIST_RESPONSE:
                     console.log('List response message received')
                     break
-                case 'button_response':
+                case MessageTypes.BUTTONS_RESPONSE:
                     console.log('Button response message received')
                     break
-                case 'payment':
+                case MessageTypes.PAYMENT:
                     console.log('Payment message received')
                     break
-                case 'broadcat_notification':
+                case MessageTypes.BROADCAST_NOTIFICATION:
                     console.log('Broadcast notification message received')
                     break
-                case 'call_log':
+                case MessageTypes.CALL_LOG:
                     console.log('Call log message received')
                     break
-                case 'ciphertext':
+                case MessageTypes.CIPHERTEXT:
                     console.log('Ciphertext message received')
                     break
-                case 'debug':
+                case MessageTypes.DEBUG:
                     console.log('Debug message received')
                     break
-                case 'e2e_notification':
+                case MessageTypes.E2E_NOTIFICATION:
                     console.log('E2E notification message received')
                     break
-                case 'gp2p':
+                case MessageTypes.GP2:
                     console.log('Group message received')
                     break
-                case 'group_notification':
+                case MessageTypes.GROUP_NOTIFICATION:
                     console.log('Group notification message received')
                     break
-                case 'hsm':
+                case MessageTypes.HSM:
                     console.log('HSM message received')
                     break
-                case 'interactive':
+                case MessageTypes.INTERACTIVE:
                     console.log('Interactive message received')
                     break
-                case 'native_flow':
+                case MessageTypes.NATIVE_FLOW:
                     console.log('Native flow message received')
                     break
-                case 'notification':
+                case MessageTypes.NOTIFICATION:
                     console.log('Notification message received')
                     break
-                case 'notification_template':
+                case MessageTypes.NOTIFICATION_TEMPLATE:
                     console.log('Notification template message received')
                     break
-                case 'oversize':
+                case MessageTypes.OVERSIZED:
                     console.log('Oversize message received')
                     break
-                case 'protocol':
+                case MessageTypes.PROTOCOL:
                     console.log('Protocol message received')
                     break
-                case 'reaction':
+                case MessageTypes.REACTION:
                     console.log('Reaction message received')
                     break
-                case 'template_button_reply':
+                case MessageTypes.TEMPLATE_BUTTON_REPLY:
                     console.log('Template button reply message received')
                     break
-                case 'poll_creation':
+                case MessageTypes.POLL_CREATION:
                     console.log('Poll creation message received')
                     break
                 default:
@@ -240,7 +257,7 @@ client.on('message_create', async (message) => {
                     break
             }
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Error: ${error.message}`)
     }
 })

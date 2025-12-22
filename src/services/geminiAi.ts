@@ -1,12 +1,19 @@
-require('dotenv').config()
-const { GoogleGenerativeAI } = require('@google/generative-ai')
-const { GoogleGenAI } = require('@google/genai')
-const generativeAI = new GoogleGenerativeAI(process.env.Gemini_API_KEY)
+import 'dotenv/config'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI, Content, Part } from '@google/genai'
+
+const apiKey = process.env.Gemini_API_KEY as string
+if (!apiKey) {
+    console.error("Gemini_API_KEY is not defined in .env")
+    process.exit(1)
+}
+
+const generativeAI = new GoogleGenerativeAI(apiKey)
 const genAI = new GoogleGenAI({
-    apiKey: process.env.Gemini_API_KEY
+    apiKey: apiKey
 })
 
-async function getGeminiResponse(prompt) {
+export async function getGeminiResponse(prompt: string): Promise<string> {
     const model = generativeAI.getGenerativeModel({
         model: "gemini-2.0-flash"
     })
@@ -15,7 +22,7 @@ async function getGeminiResponse(prompt) {
     return text
 }
 
-async function geminiResponseAi(chatHistory, prompt) {
+export async function geminiResponseAi(chatHistory: Content[], prompt: string): Promise<string> {
     const chat = genAI.chats.create({
         model: "gemini-2.0-flash",
         config: {
@@ -28,11 +35,6 @@ async function geminiResponseAi(chatHistory, prompt) {
     const result = await chat.sendMessage({
         message: prompt
     })
-    const text = result.text
+    const text = result.text || ""
     return text
-}
-
-module.exports = {
-    getGeminiResponse,
-    geminiResponseAi
 }
