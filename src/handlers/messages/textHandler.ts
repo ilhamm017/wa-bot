@@ -2,6 +2,8 @@ import { Message } from 'whatsapp-web.js'
 import { Content, Part } from '@google/genai'
 import { queueService, QueueItem } from '../../services/queue'
 import { geminiResponseAi } from '../../services/geminiAi'
+import { aiClassifier } from '../../services/aiClassifier'
+import { contextService } from '../../services/contextService'
 
 // Map untuk menyimpan timer debounce setiap chat
 const debounceTimers = new Map<string, NodeJS.Timeout>()
@@ -83,10 +85,36 @@ export const handleTextMessage = async (message: Message) => {
             // atau biarkan chatHistory yang bekerja (karena historyData sudah mencakup pesan-pesan yang baru masuk ke WhatsApp).
 
             // Kita gunakan body pesan terakhir sebagai trigger prompt utama.
-            const prompt = message.body
+            // --- AI CONTEXT INJECTION START ---
+            // Gunakan pesan terakhir sebagai prompt utama untuk klasifikasi
+            const userMessage = messageList.map(m => m.message).join('\n') // Gabungkan pesan dalam queue
+            console.log(`Mendeteksi intent untuk pesan: "${userMessage.substring(0, 50)}..."`)
+
+            const topics = contextService.getKnowledgeStats()
+            const intentId = await aiClassifier.detectIntent(userMessage, topics)
+
+            let finalPrompt = userMessage
+
+            if (intentId) {
+                console.log(`Intent terdeteksi: ${intentId}`)
+                const knowledgeContent = contextService.getKnowledgeContent(intentId)
+                if (knowledgeContent) {
+                    finalPrompt = `
+[INFORMASI PENTING]: Gunakan informasi berikut untuk menjawab pertanyaan pengguna.
+${knowledgeContent}
+
+Pesan Pengguna:
+${userMessage}
+                    `.trim()
+                }
+            } else {
+                console.log(`Tidak ada intent spesifik terdeteksi.`)
+            }
+            // --- AI CONTEXT INJECTION END ---
 
             console.log(`Mengirim ke AI...`)
-            const response = await geminiResponseAi(chatHistory, prompt)
+            // Kita mengirim finalPrompt yang mungkin sudah disisipi konteks
+            const response = await geminiResponseAi(chatHistory, finalPrompt)
 
             await message.reply(response)
             console.log(`Balasan AI terkirim.`)

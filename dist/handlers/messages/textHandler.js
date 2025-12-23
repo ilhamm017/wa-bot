@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleTextMessage = void 0;
 const queue_1 = require("../../services/queue");
 const geminiAi_1 = require("../../services/geminiAi");
+const aiClassifier_1 = require("../../services/aiClassifier");
+const contextService_1 = require("../../services/contextService");
 // Map untuk menyimpan timer debounce setiap chat
 const debounceTimers = new Map();
 const handleTextMessage = async (message) => {
@@ -69,9 +71,33 @@ const handleTextMessage = async (message) => {
             // Gabungkan pesan yang ada di queue menjadi satu prompt jika perlu, 
             // atau biarkan chatHistory yang bekerja (karena historyData sudah mencakup pesan-pesan yang baru masuk ke WhatsApp).
             // Kita gunakan body pesan terakhir sebagai trigger prompt utama.
-            const prompt = message.body;
+            // --- AI CONTEXT INJECTION START ---
+            // Gunakan pesan terakhir sebagai prompt utama untuk klasifikasi
+            const userMessage = messageList.map(m => m.message).join('\n'); // Gabungkan pesan dalam queue
+            console.log(`Mendeteksi intent untuk pesan: "${userMessage.substring(0, 50)}..."`);
+            const topics = contextService_1.contextService.getKnowledgeStats();
+            const intentId = await aiClassifier_1.aiClassifier.detectIntent(userMessage, topics);
+            let finalPrompt = userMessage;
+            if (intentId) {
+                console.log(`Intent terdeteksi: ${intentId}`);
+                const knowledgeContent = contextService_1.contextService.getKnowledgeContent(intentId);
+                if (knowledgeContent) {
+                    finalPrompt = `
+[INFORMASI PENTING]: Gunakan informasi berikut untuk menjawab pertanyaan pengguna.
+${knowledgeContent}
+
+Pesan Pengguna:
+${userMessage}
+                    `.trim();
+                }
+            }
+            else {
+                console.log(`Tidak ada intent spesifik terdeteksi.`);
+            }
+            // --- AI CONTEXT INJECTION END ---
             console.log(`Mengirim ke AI...`);
-            const response = await (0, geminiAi_1.geminiResponseAi)(chatHistory, prompt);
+            // Kita mengirim finalPrompt yang mungkin sudah disisipi konteks
+            const response = await (0, geminiAi_1.geminiResponseAi)(chatHistory, finalPrompt);
             await message.reply(response);
             console.log(`Balasan AI terkirim.`);
             // Bersihkan antrian untuk chat ini

@@ -1,0 +1,17 @@
+[
+    {
+        "id": "pricing",
+        "description": "Pertanyaan mengenai harga langganan, biaya bulanan, perpanjangan, atau paket tahunan.",
+        "content": "Harga paket Basic: Rp 50.000/bulan. Paket Pro: Rp 100.000/bulan (dapat diskon jika setahun). Pembayaran via transfer bank BCA."
+    },
+    {
+        "id": "about",
+        "description": "Pertanyaan tentang siapa kami, lokasi kantor, jam operasional, atau profil perusahaan.",
+        "content": "Kami adalah Startup AI Solution. Kantor kami di Jakarta Selatan. Buka Senin-Jumat jam 09:00 - 17:00."
+    },
+    {
+        "id": "technical",
+        "description": "Kendala teknis, error aplikasi, cara install, atau bug report.",
+        "content": "Jika mengalami kendala teknis, silakan restart aplikasi. Jika masalah berlanjut, hubungi tim support di support@example.com atau kirim screenshot error di sini."
+    }
+]

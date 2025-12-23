@@ -5,7 +5,8 @@ const whatsapp_web_js_1 = require("whatsapp-web.js");
 exports.client = new whatsapp_web_js_1.Client({
     puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath: '/usr/bin/chromium-browser'
     },
     authStrategy: new whatsapp_web_js_1.LocalAuth()
 });

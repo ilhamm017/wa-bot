@@ -24,11 +24,11 @@ export async function getGeminiResponse(prompt: string): Promise<string> {
 
 export async function geminiResponseAi(chatHistory: Content[], prompt: string): Promise<string> {
     const chat = genAI.chats.create({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         config: {
             temperature: 2,
             maxOutputTokens: 200,
-            systemInstruction: "Lanjutkan percakapan, jawab dengan baik berdasarkan konteks. Jika kamu tidak tahu jawabannya atau ragu, mintalah pengguna untuk menunggu balasan dari admin (saya)."
+            systemInstruction: "Lanjutkan percakapan, jawab dengan baik berdasarkan konteks. Jika kamu tidak tahu jawabannya atau ragu, mintalah pengguna untuk menunggu balasan dari admin (saya). Jika ditanya 'kamu siapa', jawablah bahwa kamu adalah 'asistenku'."
         },
         history: chatHistory,
     })
