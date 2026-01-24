@@ -8,6 +8,7 @@
     "@google/genai": "^0.7.0",
     "@google/generative-ai": "^0.24.0",
     "dotenv": "^16.4.7",
+    "googleapis": "^169.0.0",
     "nodemon": "^3.1.9",
     "puppeteer": "^24.4.0",
     "qrcode-terminal": "^0.12.0",

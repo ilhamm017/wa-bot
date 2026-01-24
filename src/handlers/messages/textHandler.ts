@@ -1,5 +1,5 @@
 import { Message } from 'whatsapp-web.js'
-import { Content, Part } from '@google/genai'
+import { Content, Part } from '@google/generative-ai'
 import { queueService, QueueItem } from '../../services/queue'
 import { geminiResponseAi } from '../../services/geminiAi'
 import { aiClassifier } from '../../services/aiClassifier'
