@@ -3,6 +3,7 @@ import { queueService } from '../services/queue'
 import { handleTextMessage } from './messages/textHandler'
 import { handleMediaMessage } from './messages/mediaHandler'
 import { handleNotificationMessage } from './messages/notificationHandler'
+import { isAllowedChatId } from '../services/allowlist'
 
 export const registerMessageHandlers = (client: Client) => {
     client.on('message_create', async (message: Message) => {
@@ -35,6 +36,11 @@ export const registerMessageHandlers = (client: Client) => {
             console.log('message type', messagetype)
 
             if (!chatData.isGroup) {
+                if (!isAllowedChatId(message.from)) {
+                    console.log(`Pesan diabaikan (tidak ada di allowlist): ${message.from}`)
+                    return
+                }
+
                 switch (messagetype) {
                     case MessageTypes.TEXT:
                         await handleTextMessage(message)

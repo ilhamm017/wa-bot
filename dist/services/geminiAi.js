@@ -5,6 +5,7 @@ exports.geminiResponseAi = geminiResponseAi;
 require("dotenv/config");
 const generative_ai_1 = require("@google/generative-ai");
 const sheets_1 = require("./sheets");
+const styleProfile_1 = require("../data/styleProfile");
 const apiKey = process.env.Gemini_API_KEY;
 if (!apiKey) {
     console.error("Gemini_API_KEY is not defined in .env");
@@ -71,7 +72,12 @@ async function geminiResponseAi(chatHistory, prompt) {
     try {
         const model = generativeAI.getGenerativeModel({
             model: "gemini-2.0-flash",
-            systemInstruction: "Kamu adalah asisten pribadi bernama 'asistenku'. Tugasmu membantu manajemen keuangan dan menjawab pertanyaan umum. Jika user meminta mencatat pengeluaran/pemasukan, GUNAKAN tool 'recordTransaction'. Jangan cuma bilang 'oke dicatat' tanpa memanggil tool.",
+            systemInstruction: [
+                "Kamu adalah asisten pribadi bernama 'asistenku'.",
+                "Tugasmu membantu manajemen keuangan dan menjawab pertanyaan umum.",
+                "Jika user meminta mencatat pengeluaran/pemasukan, GUNAKAN tool 'recordTransaction'. Jangan cuma bilang 'oke dicatat' tanpa memanggil tool.",
+                styleProfile_1.ilhamStyleSystemInstruction
+            ].join("\n\n"),
             tools: [tools]
         });
         const chat = model.startChat({

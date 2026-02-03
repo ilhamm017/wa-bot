@@ -53,7 +53,7 @@ export const handleTextMessage = async (message: Message) => {
 
             console.log(`Mengambil riwayat chat...`)
             const historyData = await chatData.fetchMessages({
-                limit: 20
+                limit: 12
             })
 
             // Transform ke format Gemini

@@ -6,6 +6,7 @@ const queue_1 = require("../services/queue");
 const textHandler_1 = require("./messages/textHandler");
 const mediaHandler_1 = require("./messages/mediaHandler");
 const notificationHandler_1 = require("./messages/notificationHandler");
+const allowlist_1 = require("../services/allowlist");
 const registerMessageHandlers = (client) => {
     client.on('message_create', async (message) => {
         try {
@@ -36,6 +37,10 @@ const registerMessageHandlers = (client) => {
             const chatData = await message.getChat();
             console.log('message type', messagetype);
             if (!chatData.isGroup) {
+                if (!(0, allowlist_1.isAllowedChatId)(message.from)) {
+                    console.log(`Pesan diabaikan (tidak ada di allowlist): ${message.from}`);
+                    return;
+                }
                 switch (messagetype) {
                     case whatsapp_web_js_1.MessageTypes.TEXT:
                         await (0, textHandler_1.handleTextMessage)(message);

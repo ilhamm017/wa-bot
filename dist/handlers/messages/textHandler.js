@@ -44,7 +44,7 @@ const handleTextMessage = async (message) => {
             const chatData = await message.getChat();
             console.log(`Mengambil riwayat chat...`);
             const historyData = await chatData.fetchMessages({
-                limit: 20
+                limit: 12
             });
             // Transform ke format Gemini
             const chatHistory = historyData.map(msg => ({

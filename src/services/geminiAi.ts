@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { GoogleGenerativeAI, Content, Part, FunctionDeclaration, SchemaType } from '@google/generative-ai'
 import { sheetsService } from './sheets'
+import { ilhamStyleSystemInstruction } from '../data/styleProfile'
 
 const apiKey = process.env.Gemini_API_KEY as string
 if (!apiKey) {
@@ -73,7 +74,12 @@ export async function geminiResponseAi(chatHistory: Content[], prompt: string): 
     try {
         const model = generativeAI.getGenerativeModel({
             model: "gemini-2.0-flash",
-            systemInstruction: "Kamu adalah asisten pribadi bernama 'asistenku'. Tugasmu membantu manajemen keuangan dan menjawab pertanyaan umum. Jika user meminta mencatat pengeluaran/pemasukan, GUNAKAN tool 'recordTransaction'. Jangan cuma bilang 'oke dicatat' tanpa memanggil tool.",
+            systemInstruction: [
+                "Kamu adalah asisten pribadi bernama 'asistenku'.",
+                "Tugasmu membantu manajemen keuangan dan menjawab pertanyaan umum.",
+                "Jika user meminta mencatat pengeluaran/pemasukan, GUNAKAN tool 'recordTransaction'. Jangan cuma bilang 'oke dicatat' tanpa memanggil tool.",
+                ilhamStyleSystemInstruction
+            ].join("\n\n"),
             tools: [tools]
         })
 
